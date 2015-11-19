@@ -118,6 +118,22 @@ class AccountsManager(object):
         if os.path.isfile(os.path.join(entry.pw_dir, keyfile_suffix))]
     extra_usernames = set(sshable_usernames) - set(desired_accounts.keys())
 
+    # First check if any new users already have home directories and
+    # create their accounts.
+    for username in desired_accounts:
+      if not self.accounts.UserExists(username):
+        # Check if the homedir already exists and if yes try to derive UID
+        # and GID from that directory.
+        homedir = '/home/%s' % username
+        if os.path.isdir(homedir):
+          stats = os.stat(homedir)
+          if stats.st_uid > 1000 and stats.st_gid == stats.st_uid:
+            logging.info('Using UID %d and homedir %s for account %s',
+                         stats.st_uid, homedir, username)
+
+            self.system.UserAdd(username, self.accounts.default_user_groups,
+                                uid=stats.st_uid, homedir=homedir)
+
     if desired_accounts:
       for username, ssh_keys in desired_accounts.iteritems():
         if not username:

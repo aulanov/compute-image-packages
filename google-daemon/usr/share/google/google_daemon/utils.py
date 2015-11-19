@@ -66,8 +66,15 @@ class System(object):
   def CreateTempFile(self, delete=True):
     return tempfile.NamedTemporaryFile(delete=delete)
 
-  def UserAdd(self, user, groups):
+  def UserAdd(self, user, groups, uid=None, homedir=None):
     logging.info('Creating account %s', user)
+
+    if homedir:
+      extra_flags = ['-d', homedir]
+    else:
+      extra_flags = ['-m']
+    if uid:
+      extra_flags += ['-u', str(uid)]
 
     # We must set the crypto passwd via useradd to '*' to make ssh work
     # on Linux systems without PAM.
@@ -85,8 +92,8 @@ class System(object):
     # To solve the issue make the passwd '*' which is also recognized as
     # locked but doesn't prevent ssh logins.
     result = self.RunCommand([
-        '/usr/sbin/useradd', user, '-m', '-s', '/bin/bash', '-p', '*', '-G',
-        ','.join(groups)])
+        '/usr/sbin/useradd', user, '-s', '/bin/bash', '-p', '*', '-G',
+        ','.join(groups)] + extra_flags)
     if self.RunCommandFailed(result, 'Could not create user %s', user):
       return False
     return True
